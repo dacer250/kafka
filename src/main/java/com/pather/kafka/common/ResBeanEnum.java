@@ -1,4 +1,4 @@
-package com.vi.kafka.common;
+package com.pather.kafka.common;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

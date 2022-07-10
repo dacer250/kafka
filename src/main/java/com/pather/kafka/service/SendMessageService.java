@@ -1,8 +1,8 @@
-package com.vi.kafka.producer.service;
+package com.pather.kafka.service;
 
 import com.alibaba.fastjson.JSON;
-import com.vi.kafka.common.Book;
-import com.vi.kafka.common.ResBean;
+import com.pather.kafka.common.Event;
+import com.pather.kafka.common.ResBean;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -11,8 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
-
-import java.util.concurrent.ExecutionException;
 
 /**
  * @author Eric Tseng
@@ -25,18 +23,18 @@ public class SendMessageService {
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
     //自定义topic
-    public static final String TOPIC_TEST = "book_topic";
+    public static final String TOPIC_TEST = "TOPIC_CLICK_EVENT";
 
     /**
      * 异步发送常规写法
      *
-     * @param book
+     * @param event
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    public ResBean sendMsg(Book book) {
+    public ResBean sendMsg(Event event) {
         ResBean resBean = new ResBean();
-        String obj2String = JSON.toJSONString(book);
+        String obj2String = JSON.toJSONString(event);
         log.info("准备发送消息为：{}", obj2String);
         //发送消息
         ListenableFuture<SendResult<String, Object>> future =
@@ -59,13 +57,13 @@ public class SendMessageService {
     /**
      * 异步发送lambda写法
      *
-     * @param book
+     * @param event
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    public ResBean sendMsgLambda(Book book) {
+    public ResBean sendMsgLambda(Event event) {
         ResBean resBean = new ResBean();
-        String obj2String = JSON.toJSONString(book);
+        String obj2String = JSON.toJSONString(event);
         log.info("准备发送消息为：{}", obj2String);
         //发送消息
         kafkaTemplate.send(TOPIC_TEST, obj2String).addCallback(success -> {
@@ -90,21 +88,18 @@ public class SendMessageService {
      * get 方法还有一个重载方法 get(long timeout, TimeUnit unit)，当 send 方法耗时大于 get 方法所设定的参数时会抛出一个超时异常。
      * 虽然超时了，但仅仅是抛出异常，消息还是会发送成功的。
      *
-     * @param book
+     * @param event
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    public ResBean sendMsgAsync(Book book) {
-        String obj2String = JSON.toJSONString(book);
+    public ResBean sendMsgAsync(Event event) {
+        String obj2String = JSON.toJSONString(event);
         log.info("准备发送消息为：{}", obj2String);
         try {
-            SendResult<String, Object> sendResult = kafkaTemplate.send(TOPIC_TEST, obj2String).get();
-            assert sendResult != null;
-            String topic = sendResult.getRecordMetadata().topic();
-            int partition = sendResult.getRecordMetadata().partition();
-            long offset = sendResult.getRecordMetadata().offset();
-            System.out.println("发送消息成功:" + topic + "-" + partition + "-" + offset);
-        } catch (ExecutionException | InterruptedException e) {
+             kafkaTemplate.send(TOPIC_TEST, obj2String);
+
+        } catch (Exception e) {
+            log.error(e.getMessage(),e);
             System.out.println("发送消息失败:" + e.getMessage());
             return ResBean.error("发送失败");
         }
@@ -118,15 +113,15 @@ public class SendMessageService {
      * 比如在一个方法里同时发送多条消息，在发生异常的时候可以进行回滚，确保消息监听器
      * 不会接受到一些错误的或者不需要的消息。
      *
-     * @param book
+     * @param event
      * @return
      */
     @Transactional(rollbackFor = RuntimeException.class)
-    public ResBean sendMsgTx1(Book book) {
-        String obj2String = JSON.toJSONString(book);
+    public ResBean sendMsgTx1(Event event) {
+        String obj2String = JSON.toJSONString(event);
         log.info("准备发送消息为：{}", obj2String);
         kafkaTemplate.send(TOPIC_TEST, obj2String);
-        if ("eric".equals(book.getAuthor())) {
+        if ("eric".equals(event.getEventType())) {
             throw new RuntimeException("fail");
         }
         return ResBean.success();
@@ -135,15 +130,15 @@ public class SendMessageService {
     /**
      * 开启事务发送，声明式事务方式
      *
-     * @param book
+     * @param event
      * @return
      */
-    public ResBean sendMsgTx2(Book book) {
-        String obj2String = JSON.toJSONString(book);
+    public ResBean sendMsgTx2(Event event) {
+        String obj2String = JSON.toJSONString(event);
         log.info("准备发送消息为：{}", obj2String);
         kafkaTemplate.executeInTransaction(kafkaOperations -> {
             kafkaTemplate.send(TOPIC_TEST, obj2String);
-            if ("eric".equals(book.getAuthor())) {
+            if ("eric".equals(event.getEventType())) {
                 throw new RuntimeException("fail");
             }
             return true;

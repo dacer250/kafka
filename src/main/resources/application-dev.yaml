@@ -6,7 +6,7 @@ spring:
     name: vi-kafka
   kafka:
     # 指定 kafka 服务器的地址，集群有多个则用逗号分隔，其实 kafka 集群是相互连通的，配置其中一个就可以获取到其他的服务器，但是如果刚好配置的服务器发生故障时，那么就不可用了，因此一般情况下将集群的所有机器都配置上
-    bootstrap-servers: 127.0.0.1:9093
+    bootstrap-servers: 127.0.0.1:9092
     producer:
       # 发生错误后，消息重发的次数。配置了事务的话，如果用户显示指定了retries，那么这个参数的值必须大于0
       retries: 1
